@@ -8,6 +8,7 @@ from datetime import datetime
 from dataclasses import dataclass
 from decimal import Decimal
 import gatt
+from time import sleep
 
 @dataclass
 class Measurement():
@@ -34,9 +35,10 @@ class AnyDeviceManager(gatt.DeviceManager):
             self.stop()
 
 class OwonDMM(gatt.Device):
-    def __init__(self, mac_address, manager, on_measurement: Callable[[MacAddress, datetime, Measurement], Any]):
+    def __init__(self, mac_address, manager, on_measurement: Callable[[MacAddress, datetime, Measurement], Any], auto_reconnect=True):
         super().__init__(mac_address, manager)
         self.on_measurement = on_measurement
+        self.auto_reconnect = auto_reconnect
 
     def connect_succeeded(self):
         super().connect_succeeded()
@@ -45,10 +47,19 @@ class OwonDMM(gatt.Device):
     def connect_failed(self, error):
         super().connect_failed(error)
         logger.critical("[%s] Connection to multimeter failed: %s" % (self.mac_address, str(error)))
+        if self.auto_reconnect:
+            logger.info("[%s] Attempting to reconnect" % self.mac_address)
+            while True:
+                sleep(1)
+                self.connect()
+
 
     def disconnect_succeeded(self):
         super().disconnect_succeeded()
         logger.info("[%s] Disconnected from multimeter" % (self.mac_address))
+
+        if self.auto_reconnect == True:
+            self.connect()
 
     def services_resolved(self):
         super().services_resolved()
