@@ -17,14 +17,15 @@ if __name__ == "__main__":
         if not line:
             break
 
-        mac,time,function,value,unit = line.split(";")
+        mac, time, function, value, unit = line.split(";")
 
         if (mac, unit) not in graphs:
             graphs[(mac, unit)] = {
                 "data": []
             }
 
-        graphs[(mac, unit)]["data"].append((datetime.fromtimestamp(float(time)), float(value)))
+        graphs[(mac, unit)]["data"].append(
+            (datetime.fromtimestamp(float(time)), float(value)))
 
         ax.clear()
         ax.set_xlabel("Time")

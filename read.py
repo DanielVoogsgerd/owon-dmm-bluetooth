@@ -10,6 +10,7 @@ from decimal import Decimal
 import gatt
 from time import sleep
 
+
 @dataclass
 class Measurement():
     mantissa: Decimal
@@ -21,18 +22,21 @@ class Measurement():
     @property
     def value(self) -> float:
         return float(self.mantissa) * 10**self.order
-        
+
 
 MacAddress = str
 
 Formatter = Callable[[MacAddress, datetime, Measurement], str]
 
+
 class AnyDeviceManager(gatt.DeviceManager):
     def device_discovered(self, device):
         if device.alias() == "BDM":
-            logger.info("Discovered multimeter [%s] %s" % (device.mac_address, device.alias()))
+            logger.info("Discovered multimeter [%s] %s" % (
+                device.mac_address, device.alias()))
             self.owon_mac = device.mac_address
             self.stop()
+
 
 class OwonDMM(gatt.Device):
     def __init__(self, mac_address, manager, on_measurement: Callable[[MacAddress, datetime, Measurement], Any], auto_reconnect=True):
@@ -46,13 +50,13 @@ class OwonDMM(gatt.Device):
 
     def connect_failed(self, error):
         super().connect_failed(error)
-        logger.critical("[%s] Connection to multimeter failed: %s" % (self.mac_address, str(error)))
+        logger.critical("[%s] Connection to multimeter failed: %s" %
+                        (self.mac_address, str(error)))
         if self.auto_reconnect:
             logger.info("[%s] Attempting to reconnect" % self.mac_address)
             while True:
                 sleep(1)
                 self.connect()
-
 
     def disconnect_succeeded(self):
         super().disconnect_succeeded()
@@ -80,14 +84,17 @@ class OwonDMM(gatt.Device):
         measurement_characteristic.enable_notifications()
 
     def descriptor_read_value_failed(self, descriptor, error):
-        logger.critical(f"Could not read value from descriptor: {descriptor}; received error: {error}")
+        logger.critical(
+            f"Could not read value from descriptor: {descriptor}; received error: {error}")
 
     def characteristic_enable_notification_succeeded(self, characteristic):
-        logger.debug(f"Successfully subscribed to characteristic notifications: {characteristic}")
+        logger.debug(
+            f"Successfully subscribed to characteristic notifications: {characteristic}")
 
     def characteristic_enable_notification_failed(self, characteristic):
         logger.warn("Could not subscribe to characteristic notifications")
-        logger.debug(f"Failed to subscribe to characteristic notifications: {characteristic}")
+        logger.debug(
+            f"Failed to subscribe to characteristic notifications: {characteristic}")
 
     def characteristic_value_updated(self, characteristic, value):
         self.on_measurement(self.mac_address, datetime.now(), Measurement(
@@ -96,7 +103,7 @@ class OwonDMM(gatt.Device):
             get_prefix(value),
             get_unit(value),
             get_function(value)
-        ));
+        ))
 
         unit = get_unit(value)
         # if unit:
@@ -169,12 +176,12 @@ def get_order(data):
 
 def get_prefix(data):
     return [
-        "", # 0
-        "k", # 1
-        "M", # 2
-        "n", # -3
-        "u", # -2
-        "m", # -1
+        "",  # 0
+        "k",  # 1
+        "M",  # 2
+        "n",  # -3
+        "u",  # -2
+        "m",  # -1
     ][get_order_index(data)]
 
 
@@ -188,10 +195,10 @@ def get_mantissa(data):
 def csv_formatter(mac_address: str, time: datetime, measurement: Measurement) -> str:
     return "{mac_address};{time};{function};{value};{unit}".format(
         mac_address=mac_address,
-        time = time.timestamp(),
-        function = measurement.function,
-        value = measurement.value,
-        unit = measurement.unit
+        time=time.timestamp(),
+        function=measurement.function,
+        value=measurement.value,
+        unit=measurement.unit
     )
 
 
@@ -202,14 +209,15 @@ def json_formatter(mac_address: str, time: datetime, measurement: Measurement) -
 def default_formatter(mac_address: str, time: datetime, measurement: Measurement) -> str:
     return "{mac_address} {time} {function} {value} {unit}".format(
         mac_address=mac_address,
-        time = time,
-        function = measurement.function,
-        value = measurement.value,
-        unit = measurement.unit
+        time=time,
+        function=measurement.function,
+        value=measurement.value,
+        unit=measurement.unit
     )
 
 
-arg_parser = ArgumentParser(description="A tool for reading bluetooth values from owon multimeters")
+arg_parser = ArgumentParser(
+    description="A tool for reading bluetooth values from owon multimeters")
 arg_parser.add_argument(
     "--format",
     help="Set custom format type. One can choose from JSON, CSV, or omit to get a legible tabular output",
@@ -250,7 +258,8 @@ measurement_formatter = default_formatter
 if args.format:
     measurement_formatter = FORMATTERS[args.format]
 
-device = OwonDMM(on_measurement=lambda *args, **kwargs: print(measurement_formatter(*args, **kwargs), flush=True), manager=manager, mac_address=discovery_manager.owon_mac)
+device = OwonDMM(on_measurement=lambda *args, **kwargs: print(measurement_formatter(*
+                 args, **kwargs), flush=True), manager=manager, mac_address=discovery_manager.owon_mac)
 device.connect()
 
 manager.run()
